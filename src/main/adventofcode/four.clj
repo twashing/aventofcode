@@ -5,7 +5,7 @@
 
 
 (s/def :four/code-input #(re-matches #"[[a-z]+\-]+[0-9]+\[[a-z]+\]" %))
-(s/def :four/code-inputs (s/coll-of :four/code-inputs))
+(s/def :four/code-inputs (s/coll-of :four/code-input))
 
 (def input-example-a "aaaaa-bbb-z-y-x-123[abxyz]")
 (def input-example-b "a-b-c-d-e-f-g-h-987[abcde]")

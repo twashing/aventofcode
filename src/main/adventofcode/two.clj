@@ -24,9 +24,10 @@
                                  (s/conform :two/allowed-key result)))
                        result
                        key)]
-    {:move direction
-     :last-key result-final
-     :key result-final}))
+    (assoc keypad-state
+           :move direction
+           :last-key result-final
+           :key result-final)))
 
 (defmethod move "D" [direction {:keys [last-key key move] :as keypad-state}]
   (let [result (+ key 3)
@@ -34,9 +35,10 @@
                                  (s/conform :two/allowed-key result)))
                        result
                        key)]
-    {:move direction
-     :last-key result-final
-     :key result-final}))
+    (assoc keypad-state
+           :move direction
+           :last-key result-final
+           :key result-final)))
 
 (defmethod move "L" [direction {:keys [last-key key move] :as keypad-state}]
   (let [result (- key 1)
@@ -44,9 +46,10 @@
         result-final (if (some last-row [result])
                        result
                        key)]
-    {:move direction
-     :last-key result-final
-     :key result-final}))
+    (assoc keypad-state
+           :move direction
+           :last-key result-final
+           :key result-final)))
 
 (defmethod move "R" [direction {:keys [last-key key move] :as keypad-state}]
   (let [result (+ key 1)
@@ -54,9 +57,10 @@
         result-final (if (some last-row [result])
                        result
                        key)]
-    {:move direction
-     :last-key result-final
-     :key result-final}))
+    (assoc keypad-state
+           :move direction
+           :last-key result-final
+           :key result-final)))
 
 
 (defn calculate-line [keypad-state line]
@@ -67,8 +71,13 @@
 
 (defn calculate [keypad-state input-set]
   (reduce (fn [acc ech-set]
-            (calculate-line acc
-                            ech-set))
+
+            (let [result (calculate-line acc ech-set)
+                  {:keys [code key] :as last-result} (last result)]
+
+              (into [] (concat (butlast result)
+                               [(assoc last-result
+                                       :code (conj code key))]))))
           keypad-state
           input-set))
 
@@ -77,7 +86,9 @@
   ;; Same here - We can explicitly check input or turn on spec instrumentation
   (check-input :two/input-set input-set)
 
-  (calculate [{:move nil
-               :last-key nil
-               :key 5}]
-             input-set))
+  (-> (calculate [{:move nil
+                   :last-key nil
+                   :key 5
+                   :code []}]
+                 input-set)
+      last :code))
