@@ -23,7 +23,7 @@
 (comment
 
   ;; C
-  (map #(split-with-delimiter % #"[RL]") directions-all)
+  (map #(split-with-delimiter % "[RL]") directions-all)
 
   (split-directions directions-all)
   (split-direction (first directions-all)))
@@ -32,6 +32,9 @@
 
   ;; Good input
   (clojure.pprint/pprint directions-all)
+
+  (calculate directions-all)
+
 
   (def one (start directions-all))
   (clojure.pprint/pprint one)

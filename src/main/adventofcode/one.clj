@@ -5,9 +5,6 @@
             [adventofcode.core :refer [check-input]]))
 
 
-(s/def :one/direction #(re-matches #"[RL][0-9]+" %))
-(s/def :one/directions (s/coll-of :one/direction))
-
 (def directions [:N :E :S :W])
 (def direction-mapping
   (apply merge
@@ -19,12 +16,14 @@
   (str/split s (re-pattern (str "(?=" d ")|(?<=" d ")"))))
 
 (defn split-direction [direction]
-  (let [[direction distance] (split-with-delimiter direction #"[RL]")]
+  (let [[direction distance] (split-with-delimiter direction "[RL]")]
     [direction (Integer/parseInt distance)]))
 
 (defn split-directions [directions]
   (map #(split-direction %) directions))
 
+(defn calculate-blocks-from-start [coordinates]
+  (apply + (map abs coordinates)))
 
 (defn calculate [directions]
   (reduce (fn [acc ech]
@@ -49,7 +48,7 @@
                                          (- (first coordinates) move-distance))
                                        (second coordinates)]))
 
-                  blocks-from-start-new (apply + (map abs coordinates-new))]
+                  blocks-from-start-new (calculate-blocks-from-start coordinates-new)]
 
               (conj acc {:step step-new
                          :orientation orientation-new
