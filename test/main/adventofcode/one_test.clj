@@ -1,5 +1,6 @@
 (ns adventofcode.one-test
   (:require [adventofcode.one :as one]
+            [clojure.test :refer [deftest is]]
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
@@ -45,28 +46,21 @@
   100
   (prop/for-all [v instructions-generator]
                 (let [directions-final (one/calculate v)]
-
-                  #_(println (str "instructions: " v))
-                  #_(println (str "directions-final: " directions-final))
-                  #_(println (str "count: " (reduce (fn [acc ech]
-                                                    (println ech)
-                                                    (+ acc (one/calculate-blocks-from-start (:coordinates ech))))
-                                                  0
-                                                  directions-final)))
-                  #_(println)
-
                   (every? #(= [:blocks-from-start :coordinates :orientation :step]
                               (-> % keys sort))
                           directions-final))))
 
-#_[{:step 0, :coordinates [0 0], :blocks-from-start 0, :orientation :N}
- {:step 1, :orientation :E, :coordinates [5 0], :blocks-from-start 5}
- {:step 2, :orientation :N, :coordinates [5 2], :blocks-from-start 7}
- {:step 3,
-  :orientation :W,
-  :coordinates [-15 2],
-  :blocks-from-start 17}
- {:step 4,
-  :orientation :N,
-  :coordinates [-15 8],
-  :blocks-from-start 23}]
+(deftest test-split-directions-values
+  (is (= (one/split-directions one/directions-all)
+         '(["R" 5] ["L" 2] ["L" 20] ["R" 6]))))
+
+(deftest test-split-direction-values
+  (is (= (one/split-direction (first one/directions-all))
+         ["R" 5])))
+
+(deftest test-calculate-values
+  (is (= (one/calculate one/directions-all)
+         [{:step 0, :coordinates [0 0], :blocks-from-start 0, :orientation :N} {:step 1, :orientation :E, :coordinates [5 0], :blocks-from-start 5} {:step 2, :orientation :N, :coordinates [5 2], :blocks-from-start 7} {:step 3, :orientation :W, :coordinates [-15 2], :blocks-from-start 17} {:step 4, :orientation :N, :coordinates [-15 8], :blocks-from-start 23}])))
+
+(deftest test-start-invalid-input
+  (is (thrown? Exception (one/start ["R" "2L" "" "58"]))))
