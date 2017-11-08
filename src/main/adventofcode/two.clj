@@ -6,6 +6,7 @@
 (def possible-keys (range 1 10))
 (def keypad (partition 3 possible-keys))
 
+
 (s/def :two/direction #(re-matches #"[UDLR]{1}" %))
 (s/def :two/input-line (s/coll-of :two/direction))
 (s/def :two/input-set (s/coll-of :two/input-line))

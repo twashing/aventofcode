@@ -41,10 +41,11 @@
 
   (find-row 5)
   (find-row 7)
+  (find-row 22)
 
   (move "U" {:move nil
              :last-key 5
-             :key nil})
+             :key 5})
   (move "U" {:move nil
              :last-key 2
              :key nil})
@@ -115,4 +116,3 @@
 
   (def official-output (start official-input))
   (clojure.pprint/pprint official-output))
-
