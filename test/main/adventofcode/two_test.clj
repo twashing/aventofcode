@@ -78,3 +78,26 @@
 
                   (every? #(some #{:move :last-key :key} (keys %))
                           result))))
+
+
+(two/calculate-line [{:move nil
+                      :last-key 5
+                      :key 5}]
+                    ["U" "L" "L"])
+
+(two/calculate-line [{:move nil
+                      :last-key 1
+                      :key 1}]
+                    ["R" "R" "D" "D" "D"])
+
+(two/calculate-line [{:move nil
+                      :last-key 9
+                      :key 9}]
+                    ["L" "U" "R" "D" "L"])
+
+(two/calculate [{:move nil
+                 :last-key nil
+                 :key 5
+                 :code []}]
+               two/input-set)
+

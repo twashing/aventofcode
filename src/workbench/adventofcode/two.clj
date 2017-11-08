@@ -1,21 +1,6 @@
 (ns adventofcode.two)
 
 
-(def input-line-good ["U" "L" "L"])
-(def input-line-bad ["Z" "O" "D"])
-(def input-set
-  [["U" "L" "L"]
-   ["R" "R" "D" "D" "D"]
-   ["L" "U" "R" "D" "L"]
-   ["U" "U" "U" "U" "D"]])
-(def input-set-bad
-  [["U" "L" "Z"]
-   ["R" "R" "D" "D" "D"]])
-
-
-(defn calculate [input-lines])
-
-
 (comment
 
   ;; A
