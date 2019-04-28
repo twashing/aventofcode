@@ -91,8 +91,12 @@
 (defn put-cargo [floors to & cargo]
   (update-in floors [to :floor] concat cargo))
 
-(def compatible-corgo #{:LG :LM
-                        :HG :HM})
+
+(def compatible-cargo {:LG :LM :HG :HM})
+(def cargo-set (->> compatible-cargo
+                    seq
+                    (apply concat)
+                    (into #{})))
 
 (def floors {4 {:bay nil :floor []}
              3 {:bay nil :floor [:LG]}
@@ -100,15 +104,19 @@
              1 {:bay :E :floor [:HM :LM]}})
 
 (defn move [floors from to & cargo]
+  {:pre [(some cargo-set cargo)]}
 
-  (let [get-result (apply (partial get-cargo floors from) cargo)
-        remove-result (apply (partial remove-cargo floors from) cargo)
-        put-result (apply (partial put-cargo remove-result to) cargo)
-        result (update-in (update-in put-result [from :bay] (constantly nil))
-                          [to :bay] (constantly :E))]
+  (as-> cargo xs
+    (apply (partial remove-cargo floors from) xs)
+    (apply (partial put-cargo xs to) cargo)
+    (update-in xs [from :bay] (constantly nil))
+    (update-in xs [to :bay] (constantly :E))))
 
-    {:cargo get-result
-     :result result}))
+(comment
+
+  (move floors 3 1 :LG)
+
+  )
 
 
 ;; > Move Ranking
@@ -159,64 +167,74 @@
                    (partition 2)
                    (sort-by first)
                    reverse
-                   (apply concat)
-                   )))
-       #_(map (fn [v] (apply hash-map v)))))
+                   (apply concat))))))
 
-(defn group-floors []
+(defn group-floors [floors]
   (partition-all 2 1 (map identity floors)))
 
 (defn get-neighbours [ky neighbour-collection]
-
   (->> neighbour-collection
        (map (fn [v] (partition 2 v)))
        (filter (fn [il]
                  (-> (filter (fn [[k v]] (= ky k)) il)
                      empty?
                      not)))
-       (map (fn [v] (remove (fn [vv] (= ky (first vv))) v)))
-       (mapcat #(apply concat %))
-       (apply hash-map)))
+       (map (fn [v] (partition 2 1 v)))
+       (map (fn [v] (filter (fn [[[lk lv] [rk rv]]]
+                             (or (= ky lk) (= rk ky)))
+                           v)))
+       (map flatten)
+       (map (fn [v] (partition 2 v)))
+       (map (fn [v] (remove (fn [[k' v']] (= ky k')) v)))
+       (map flatten)
+       (map (fn [v] (apply hash-map v)))
+       (apply merge)))
 
 (defn possible-moves [floors cargo]
-  (let [neighbour-collection (->> (group-floors)
-                                  collect-neighbours)]
 
-    ;; get floor of cargo
+  ;; TODO get floor of cargo
+  (let [floor cargo]
 
-    ;; get neighbours of floor
-
-    ))
+    (->> floors
+         (group-floors)
+         collect-neighbours
+         (get-neighbours floor))))
 
 
 (comment
 
-  (pprint (->> (group-floors)
-               collect-neighbours
-               (get-neighbours 3)))
 
-  )
-
-
+  (pprint (possible-moves floors 4))
+  (pprint (possible-moves floors 3))
+  (pprint (possible-moves floors 2))
+  (pprint (possible-moves floors 1))
 
 
-(defn next-step [floors cargo from to]
-  (-> (remove-cargo floors from cargo)
-      (put-cargo to cargo)))
+  (defn next-step [floors from to & cargo]
+    {:pre [(some cargo-set cargo)]}
+    (-> (remove-cargo floors from cargo)
+        (put-cargo to cargo)))
 
-(comment
+  (next-step floors 2 1 :LG)
+
+  (move floors 3 1 :LG)
 
 
-  (next-step floors :LG 3 0)
 
-  (pprint (take 6 (iterate (fn [[fl cargo from to]]
+
+  #_(defn one [floors start-floor cargo]
+
+    (for [[n fl] (seq (possible-moves floors 1))]
+
+      (next-step floors start-floor n cargo)
+      [n fl])
+
+    (let [[n fl] (seq (possible-moves floors start-floor))]
+
+      (map )))
+  #_(pprint (take 6 (iterate (fn [[fl cargo from to]]
 
                               (let [nextf (next-step fl cargo from to)]
                                 [nextf cargo to (inc to)]))
 
-                            [floors :LG 3 1])))
-
-  )
-
-;; get starting location
-;;   exclude starting location from the possible next destination
+                            [floors :LG 3 1]))))
