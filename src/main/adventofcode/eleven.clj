@@ -112,21 +112,14 @@
     (update-in xs [from :bay] (constantly nil))
     (update-in xs [to :bay] (constantly :E))))
 
-(comment
 
-  (move floors 3 1 :LG)
-
-  )
-
+;; [ok] list all possible moves from floor 1 to 4
+;;   remove stubs
+;;   give each move, a rank of :infinity
 
 ;; > Move Ranking
 ;;   how many pieces does move move (the more, the better)
 ;;   does move go up or down (up is better)
-
-;; list all possible moves from floor 1 to 4
-;;   remove stubs
-;;   give each move, a rank of :infinity
-;;   ?? howto find neighbours
 
 ;; iterate through starting move combinations (combinations of floor contents)
 ;;   for each combination:
@@ -143,8 +136,6 @@
 
 ;; ** take all possible ranked paths, in order
 ;; ** eliminate dead-ends
-
-
 
 
 (defn find-neighbour [ky1 input]
@@ -190,7 +181,7 @@
        (map (fn [v] (apply hash-map v)))
        (apply merge)))
 
-(defn possible-moves [floors cargo]
+(defn floor->neighbours [floors cargo]
 
   ;; TODO get floor of cargo
   (let [floor cargo]
@@ -200,27 +191,25 @@
          collect-neighbours
          (get-neighbours floor))))
 
+(defn possible-moves [floors cargo]
+  (floor->neighbours floors cargo))
+
 
 (comment
 
 
-  (pprint (possible-moves floors 4))
-  (pprint (possible-moves floors 3))
-  (pprint (possible-moves floors 2))
-  (pprint (possible-moves floors 1))
+  (pprint (floor->neighbours floors 4))
+  (pprint (floor->neighbours floors 3))
+  (pprint (floor->neighbours floors 2))
+  (pprint (floor->neighbours floors 1))
 
-
-  (defn next-step [floors from to & cargo]
-    {:pre [(some cargo-set cargo)]}
-    (-> (remove-cargo floors from cargo)
-        (put-cargo to cargo)))
-
-  (next-step floors 2 1 :LG)
 
   (move floors 3 1 :LG)
 
 
-
+  ;; ? What combination of items can I take
+  ;; ? For each combination, where can I go
+  
 
   #_(defn one [floors start-floor cargo]
 
