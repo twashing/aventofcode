@@ -1,4 +1,6 @@
-(ns main.adventofcode.eleven)
+(ns main.adventofcode.eleven
+  (:require [clojure.tools.trace :refer [trace]]
+            [clojure.math.combinatorics :as com]))
 
 
 ;; SUMMARIEZED
@@ -93,8 +95,8 @@
 
 
 (def compatible-cargo {:LG :LM :HG :HM})
-(def cargo-set (->> compatible-cargo
-                    seq
+(def compatible-cargo-entries (seq compatible-cargo))
+(def cargo-set (->> compatible-cargo-entries
                     (apply concat)
                     (into #{})))
 
@@ -179,20 +181,62 @@
        (map (fn [v] (remove (fn [[k' v']] (= ky k')) v)))
        (map flatten)
        (map (fn [v] (apply hash-map v)))
-       (apply merge)))
+       (apply merge)
+       seq))
 
-(defn floor->neighbours [floors cargo]
+(defn floor->neighbours [floors floor]
 
   ;; TODO get floor of cargo
-  (let [floor cargo]
+  (->> floors
+       (group-floors)
+       collect-neighbours
+       (get-neighbours floor)))
 
-    (->> floors
-         (group-floors)
-         collect-neighbours
-         (get-neighbours floor))))
+(defn location [floors]
+  (->> floors
+       (filter (fn [[k v]] (= (:bay v) :E)))
+       first))
 
-(defn possible-moves [floors cargo]
-  (floor->neighbours floors cargo))
+(defn compatible-units? [cargo-in-transit destination-cargo]
+  (let [to-sets (partial map #(into #{} %))]
+    (if (= 1 (count cargo-in-transit))
+      [cargo-in-transit]
+      (trace (for [aset  (to-sets compatible-cargo-entries)
+                   bset  (to-sets (com/combinations cargo-in-transit 2))
+                   :when (= aset bset)]
+               bset)))))
+
+(defn calculate-possible-move [from-floor to-floors]
+
+  ;; (println from-floor to-floor)
+
+  ;; All constraints must be true when on any floor, or the elevator is crossing a floor
+  ;; [ok] constraint: elevator 1 floor at a time
+  ;; [ok] constraint: at least 1 chip or generator
+  ;; [ok] constraint: at most 2 things, chips or generators in any combinator (given)
+  ;; constraint: on floor (and elevator) like chip / generator must exist
+  ;; constraint: 2 generators or chips can travel together
+
+  (for [[from {fcargo :floor :as f}] [from-floor]
+        [to {gcargo :floor :as g}]   to-floors
+        fcargoS                      (com/subsets fcargo)
+        :when                        (and #_(not= from (first from-floor))
+                                          (<= (count fcargoS) 2)
+                                          (>= (count fcargoS) 1)
+                                          ((comp not empty?) (compatible-units? fcargoS gcargo)))]
+    {:from from :to to :cargo fcargoS}))
+
+(defn possible-moves [floors]
+  (let [[loc floor] (location floors)
+        neighbours (floor->neighbours floors loc)]
+
+    (calculate-possible-move [loc floor] neighbours)))
+
+
+;; at location
+;;   get cargo
+;;   get neighbors + cargo
+;;   calculate possible moves
 
 
 (comment
@@ -203,13 +247,25 @@
   (pprint (floor->neighbours floors 2))
   (pprint (floor->neighbours floors 1))
 
-
   (move floors 3 1 :LG)
+
+
+  ;; GOAL
+
+  ;; Get all generators and microchips to the fourth floor
+
+  ;; All constraints must be true when on any floor, or the elevator is crossing a floor
+  ;; constraint: elevator 1 floor at a time
+  ;; constraint: at least 1 chip or generator
+  ;; constraint: at most 2 things, chips or generators in any combinator (given)
+  ;; constraint: on floor (and elevator) like chip / generator must exist
+  ;; constraint: 2 generators or chips can travel together
 
 
   ;; ? What combination of items can I take
   ;; ? For each combination, where can I go
-  
+
+
 
   #_(defn one [floors start-floor cargo]
 
@@ -221,6 +277,7 @@
     (let [[n fl] (seq (possible-moves floors start-floor))]
 
       (map )))
+
   #_(pprint (take 6 (iterate (fn [[fl cargo from to]]
 
                               (let [nextf (next-step fl cargo from to)]

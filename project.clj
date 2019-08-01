@@ -7,6 +7,7 @@
                  [org.clojure/tools.trace "0.7.10"]
                  [org.clojure/spec.alpha "0.1.143"]
                  [org.clojure/math.numeric-tower "0.0.4"]
+                 [org.clojure/math.combinatorics "0.1.6"]
                  [org.clojure/core.match "0.3.0-alpha5"]
                  [com.rpl/specter "1.1.0"]
 
