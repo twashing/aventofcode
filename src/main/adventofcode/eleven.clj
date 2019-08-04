@@ -1,7 +1,10 @@
 (ns main.adventofcode.eleven
-  (:require [clojure.tools.trace :refer [trace]]
-            [clojure.math.combinatorics :as com]))
-
+  (:require [clojure.pprint :refer [pprint]]
+            [clojure.tools.trace :refer [trace]]
+            [clojure.math.combinatorics :as com]
+            [adventofcode.eleven.neighbours
+             :refer [find-neighbour collect-neighbours group-floors
+                     get-neighbours floor->neighbours]]))
 
 ;; SUMMARIEZED
 
@@ -140,58 +143,6 @@
 ;; ** eliminate dead-ends
 
 
-(defn find-neighbour [ky1 input]
-  (filter (fn [[[k1 v1] [k2 v2]]]
-            (= k2 ky1))
-          input))
-
-(defn collect-neighbours [grouped-floors]
-  (->> grouped-floors
-       (map (fn [[[ky1 vl1] [ky2 vl2]]]
-
-              ;; removes itself
-              (let [input (remove (fn [[[k1 _] _]] (= ky1 k1)) grouped-floors)
-                    [[[rk rv] _]] (find-neighbour ky1 input)]
-
-                (->> (concat [ky1 vl1] [ky2 vl2] [rk rv])
-                     (remove (fn [v] (nil? v)))))))
-       (map (fn [v]
-              (->> v
-                   (partition 2)
-                   (sort-by first)
-                   reverse
-                   (apply concat))))))
-
-(defn group-floors [floors]
-  (partition-all 2 1 (map identity floors)))
-
-(defn get-neighbours [ky neighbour-collection]
-  (->> neighbour-collection
-       (map (fn [v] (partition 2 v)))
-       (filter (fn [il]
-                 (-> (filter (fn [[k v]] (= ky k)) il)
-                     empty?
-                     not)))
-       (map (fn [v] (partition 2 1 v)))
-       (map (fn [v] (filter (fn [[[lk lv] [rk rv]]]
-                             (or (= ky lk) (= rk ky)))
-                           v)))
-       (map flatten)
-       (map (fn [v] (partition 2 v)))
-       (map (fn [v] (remove (fn [[k' v']] (= ky k')) v)))
-       (map flatten)
-       (map (fn [v] (apply hash-map v)))
-       (apply merge)
-       seq))
-
-(defn floor->neighbours [floors floor]
-
-  ;; TODO get floor of cargo
-  (->> floors
-       (group-floors)
-       collect-neighbours
-       (get-neighbours floor)))
-
 (defn location [floors]
   (->> floors
        (filter (fn [[k v]] (= (:bay v) :E)))
@@ -201,10 +152,10 @@
   (let [to-sets (partial map #(into #{} %))]
     (if (= 1 (count cargo-in-transit))
       [cargo-in-transit]
-      (trace (for [aset  (to-sets compatible-cargo-entries)
-                   bset  (to-sets (com/combinations cargo-in-transit 2))
-                   :when (= aset bset)]
-               bset)))))
+      (for [aset  (to-sets compatible-cargo-entries)
+            bset  (to-sets (com/combinations cargo-in-transit 2))
+            :when (= aset bset)]
+        bset))))
 
 (defn calculate-possible-move [from-floor to-floors]
 
@@ -214,73 +165,70 @@
   ;; [ok] constraint: elevator 1 floor at a time
   ;; [ok] constraint: at least 1 chip or generator
   ;; [ok] constraint: at most 2 things, chips or generators in any combinator (given)
-  ;; constraint: on floor (and elevator) like chip / generator must exist
-  ;; constraint: 2 generators or chips can travel together
+  ;; [ok] constraint: on floor (and elevator) like chip / generator must exist
+  ;; [ok] constraint: 2 generators or chips can travel together
 
   (for [[from {fcargo :floor :as f}] [from-floor]
         [to {gcargo :floor :as g}]   to-floors
         fcargoS                      (com/subsets fcargo)
-        :when                        (and #_(not= from (first from-floor))
-                                          (<= (count fcargoS) 2)
+        :when                        (and (<= (count fcargoS) 2)
                                           (>= (count fcargoS) 1)
                                           ((comp not empty?) (compatible-units? fcargoS gcargo)))]
-    {:from from :to to :cargo fcargoS}))
+    {:from from :to to :cargo fcargoS :paths []}))
 
-(defn possible-moves [floors]
-  (let [[loc floor] (location floors)
-        neighbours (floor->neighbours floors loc)]
+(defn goal-reached? [fs {:keys [from to cargo]}]
+  (let [new-fs (apply (partial move fs from to) cargo)
+        {new-cargo :floor} (location new-fs)]
+    (= (into #{} new-cargo)
+       cargo-set)))
 
-    (calculate-possible-move [loc floor] neighbours)))
+(defn possible-paths [floors [loc floor] neighbours]
 
+  (trace [floors [loc floor] neighbours])
+  (let [xf (comp (map (fn [{from :from to :to cargo :cargo :as p}]
+                     (let [fs (apply (partial move floors from to) cargo)]
+                       (goal-reached? fs p))))
+              (remove false?))]
 
-;; at location
-;;   get cargo
-;;   get neighbors + cargo
-;;   calculate possible moves
+    (when-let [ps (seq (calculate-possible-move [loc floor] neighbours))]
+      (if-let [gr (seq (sequence xf ps))]
+        gr
+        (map (fn [{from :from to :to cargo :cargo}]
+               (let [fs (apply (partial move floors from to) cargo)
+                     loc (location fs)
+                     ns (floor->neighbours fs to)]
+                 (possible-paths fs loc ns)))
+             ps)))))
 
 
 (comment
 
 
+  ;; NEIGHBOURS for a floor
   (pprint (floor->neighbours floors 4))
   (pprint (floor->neighbours floors 3))
   (pprint (floor->neighbours floors 2))
   (pprint (floor->neighbours floors 1))
 
-  (move floors 3 1 :LG)
+
+  ;; POSSIBLE MOVES
+  (let [[loc floor] (location floors)
+        neighbours (floor->neighbours floors loc)]
+    (possible-paths floors [loc floor] neighbours))
+
+
+  '({:from 1, :to 2, :cargo '(:HM)}
+    {:from 1, :to 2, :cargo '(:LM)})
+
+  ;; :floor :possible-move
+
+
+  ;; MOVE
+  ;; (move floors 3 1 :LG)
+  (move floors 1 2 :HM)
 
 
   ;; GOAL
 
   ;; Get all generators and microchips to the fourth floor
-
-  ;; All constraints must be true when on any floor, or the elevator is crossing a floor
-  ;; constraint: elevator 1 floor at a time
-  ;; constraint: at least 1 chip or generator
-  ;; constraint: at most 2 things, chips or generators in any combinator (given)
-  ;; constraint: on floor (and elevator) like chip / generator must exist
-  ;; constraint: 2 generators or chips can travel together
-
-
-  ;; ? What combination of items can I take
-  ;; ? For each combination, where can I go
-
-
-
-  #_(defn one [floors start-floor cargo]
-
-    (for [[n fl] (seq (possible-moves floors 1))]
-
-      (next-step floors start-floor n cargo)
-      [n fl])
-
-    (let [[n fl] (seq (possible-moves floors start-floor))]
-
-      (map )))
-
-  #_(pprint (take 6 (iterate (fn [[fl cargo from to]]
-
-                              (let [nextf (next-step fl cargo from to)]
-                                [nextf cargo to (inc to)]))
-
-                            [floors :LG 3 1]))))
+)
