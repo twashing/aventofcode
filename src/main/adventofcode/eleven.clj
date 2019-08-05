@@ -75,8 +75,6 @@
 ;; if a condition is not met, what is the "closest" move we can make
 
 
-;; TODO - implement using Specter
-
 (defn manipulate-cargo [floors mfn from & cargo]
   (as-> floors e
     (get e from)
@@ -157,9 +155,7 @@
             :when (= aset bset)]
         bset))))
 
-(defn calculate-possible-move [from-floor to-floors]
-
-  ;; (println from-floor to-floor)
+(defn calculate-possible-moves [from-floor to-floor]
 
   ;; All constraints must be true when on any floor, or the elevator is crossing a floor
   ;; [ok] constraint: elevator 1 floor at a time
@@ -169,7 +165,7 @@
   ;; [ok] constraint: 2 generators or chips can travel together
 
   (for [[from {fcargo :floor :as f}] [from-floor]
-        [to {gcargo :floor :as g}]   to-floors
+        [to {gcargo :floor :as g}]   [to-floor]
         fcargoS                      (com/subsets fcargo)
         :when                        (and (<= (count fcargoS) 2)
                                           (>= (count fcargoS) 1)
@@ -177,28 +173,44 @@
     {:from from :to to :cargo fcargoS :paths []}))
 
 (defn goal-reached? [fs {:keys [from to cargo]}]
-  (let [new-fs (apply (partial move fs from to) cargo)
+  (let [new-fs             (apply (partial move fs from to) cargo)
         {new-cargo :floor} (location new-fs)]
-    (= (into #{} new-cargo)
-       cargo-set)))
+    (if (= (into #{} new-cargo)
+             cargo-set)
+      new-fs
+      false)))
 
-(defn possible-paths [floors [loc floor] neighbours]
+(defn possible-move->goal-reached? [{from :from to :to cargo :cargo :as p}]
+  (let [fs (apply (partial move floors from to) cargo)]
+    (goal-reached? fs p)))
 
-  (trace [floors [loc floor] neighbours])
-  (let [xf (comp (map (fn [{from :from to :to cargo :cargo :as p}]
-                     (let [fs (apply (partial move floors from to) cargo)]
-                       (goal-reached? fs p))))
-              (remove false?))]
+(declare possible-paths)
 
-    (when-let [ps (seq (calculate-possible-move [loc floor] neighbours))]
-      (if-let [gr (seq (sequence xf ps))]
-        gr
-        (map (fn [{from :from to :to cargo :cargo}]
-               (let [fs (apply (partial move floors from to) cargo)
-                     loc (location fs)
-                     ns (floor->neighbours fs to)]
-                 (possible-paths fs loc ns)))
-             ps)))))
+(defn possible-move->possible-paths [floors {from :from to :to cargo :cargo}]
+  (let [fs  (apply (partial move floors from to) cargo)
+        loc (location fs)
+        ns  (floor->neighbours fs to)]
+    (possible-paths fs loc ns)))
+
+(def move-history (atom #{}))
+
+(defn duplicate-move? [move]
+  (if (some @move-history (into #{} [move]))
+    true
+    (do
+      (swap! move-history conj move)
+      false)))
+
+(defn possible-paths [floors loc neighbours]
+  (let [possible-move-xf (comp (map (partial calculate-possible-moves loc))
+                            (remove duplicate-move?))
+        goal-reached-xf (comp (map possible-move->goal-reached?)
+                           (remove false?))]
+    (println "")
+    (if-let [ps (trace (seq (flatten (sequence possible-move-xf neighbours))))]
+      (if-let [gr (seq (sequence goal-reached-xf (trace ps)))]
+        ps
+        (map (partial possible-move->possible-paths floors) ps)))))
 
 
 (comment
@@ -211,24 +223,35 @@
   (pprint (floor->neighbours floors 1))
 
 
-  ;; POSSIBLE MOVES
-  (let [[loc floor] (location floors)
-        neighbours (floor->neighbours floors loc)]
-    (possible-paths floors [loc floor] neighbours))
-
-
-  '({:from 1, :to 2, :cargo '(:HM)}
-    {:from 1, :to 2, :cargo '(:LM)})
-
-  ;; :floor :possible-move
-
-
-  ;; MOVE
-  ;; (move floors 3 1 :LG)
+  ;; BASIC MOVE
+  (move floors 3 1 :LG)
   (move floors 1 2 :HM)
+  (remove-cargo floors 1 :HM)
 
 
-  ;; GOAL
+  ;; POSSIBLE MOVES (one)
+  (def floors1 {4 {:bay nil :floor []}
+                3 {:bay nil :floor [:LG]}
+                2 {:bay nil :floor [:HG]}
+                1 {:bay :E :floor [:HM]}})
 
-  ;; Get all generators and microchips to the fourth floor
-)
+  (let [[loc floor] (location floors1)
+        neighbours (floor->neighbours floors1 1)]
+    (calculate-possible-moves [loc floor] neighbours))
+
+
+  ;; POSSIBLE MOVES (none)
+  (def floors2 {4 {:bay nil :floor []}
+                3 {:bay nil :floor [:LG]}
+                2 {:bay nil :floor [:HG]}
+                1 {:bay :E :floor []}})
+
+  (let [[loc floor] (location floors2)
+        neighbours (floor->neighbours floors2 1)]
+    (calculate-possible-moves [loc floor] neighbours))
+
+
+  ;; ** POSSIBLE PATHS
+  (def as (let [[loc floor] (location floors)
+                neighbours (floor->neighbours floors loc)]
+            (possible-paths floors [loc floor] neighbours))))

@@ -24,7 +24,7 @@
                    (apply concat))))))
 
 (defn group-floors [floors]
-  (partition-all 2 1 (map identity floors)))
+  (partition-all 2 1 floors))
 
 (defn get-neighbours [ky neighbour-collection]
   (->> neighbour-collection
@@ -49,6 +49,6 @@
 
   ;; TODO get floor of cargo
   (->> floors
-       (group-floors)
+       group-floors
        collect-neighbours
        (get-neighbours floor)))
