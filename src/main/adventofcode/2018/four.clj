@@ -64,31 +64,51 @@
       (concat x [last-duration])
       (map #(assoc %1 :duration %2) l x))))
 
-;; parse-time
-;; order records
-;; id guard
-;; calculate duration asleep / awake
-;; which guard sleeps longest?
-;; which hour is there the most sleep overlap (that guard most likely to sleep)
+(defn group-guards [l]
+  (->> (group-by #(-> % first :guard-id) l)
+       (map (fn [[k v]]
+              [k (apply concat v)]))))
+
+(defn ->guard-who-sleeps-most [l]
+  (->> (map (fn [e] (filter #(= :asleep (:state %)) e)) l)
+       group-guards
+       (map (fn [[id l]]
+              [id (reduce #(+ %1 (:duration %2)) 0 l)]))
+       (sort-by second)
+       ((comp first reverse))))
+
+(defn solve [f]
+  (let [guard-records (->> (read-input f)
+                           calculation-time
+                           (sort-by first)
+                           group-shifts
+                           flatten-guard-records
+                           (map format-records)
+                           (map calculate-durations))
+        [gid _] (->guard-who-sleeps-most guard-records)
+        guard-selection (get (->> (group-guards guard-records)
+                                  (apply concat)
+                                  (apply hash-map))
+                             gid)
+        hours-asleep (filter #(= :asleep (:state %)) guard-selection)]
+
+    (->> hours-asleep
+         (map (fn [e]
+                (let [{:keys [time duration]} e]
+                  (->> (iterate #(t/plus % (t/minutes 1)) time)
+                       (take duration)
+                       (map t/minute)))))
+
+         (apply concat)
+         frequencies
+         seq
+         (sort-by second)
+         ((comp first last)))))
+
 (comment
-
-  (->> "4.1.input"
-       read-input
-       calculation-time
-       (sort-by first)
-       group-shifts
-       flatten-guard-records
-       (map format-records)
-       (map calculate-durations)
-       pprint)
-
-  (->> "input.day4" ;; "4.1.input"
-       resource
-       slurp
-       split-lines
-       (map isolate-time)
-       (map parse-time)
-       (sort-by first)))
+  
+  (solve "4.1.input")
+  (solve "input.day4"))
 
 
 "1518-11-01T00:55:00.000Z
