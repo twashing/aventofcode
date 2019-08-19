@@ -24,7 +24,7 @@
       (update-in [0] replace #"\[" "")
       (update-in [1] trim)))
 
-(defn calculation-time [l]
+(defn calculate-time [l]
   (->> (map isolate-time l)
        (map parse-time)))
 
@@ -77,12 +77,24 @@
        (sort-by second)
        ((comp first reverse))))
 
+(defn ->most-likely-hours-asleep [l]
+  (->> (map (fn [e]
+              (let [{:keys [time duration]} e]
+                (->> (iterate #(t/plus % (t/minutes 1)) time)
+                     (take duration)
+                     (map t/minute)))) l)
+       (apply concat)
+       frequencies
+       seq
+       (sort-by second)
+       ((comp first last))))
+
 (defn solve [f]
+
   (let [guard-records (->> (read-input f)
-                           calculation-time
+                           calculate-time
                            (sort-by first)
-                           group-shifts
-                           flatten-guard-records
+                           group-shifts flatten-guard-records
                            (map format-records)
                            (map calculate-durations))
         [gid _] (->guard-who-sleeps-most guard-records)
@@ -90,26 +102,12 @@
                                   (apply concat)
                                   (apply hash-map))
                              gid)
-        hours-asleep (filter #(= :asleep (:state %)) guard-selection)]
+        hours-asleep (filter #(= :asleep (:state %)) guard-selection)
+        most-likely-hours-asleep (->most-likely-hours-asleep hours-asleep)]
 
-    (->> hours-asleep
-         (map (fn [e]
-                (let [{:keys [time duration]} e]
-                  (->> (iterate #(t/plus % (t/minutes 1)) time)
-                       (take duration)
-                       (map t/minute)))))
-
-         (apply concat)
-         frequencies
-         seq
-         (sort-by second)
-         ((comp first last)))))
+    (* (Integer/parseInt gid) most-likely-hours-asleep)))
 
 (comment
-  
+
   (solve "4.1.input")
   (solve "input.day4"))
-
-
-"1518-11-01T00:55:00.000Z
- 1518-11-01T23:58:00.000Z"
